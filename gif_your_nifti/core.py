@@ -6,6 +6,7 @@ import numpy as np
 from matplotlib.cm import get_cmap
 from imageio import mimwrite
 from skimage.transform import resize
+from skimage import exposure
 
 
 def parse_filename(filepath):
@@ -245,11 +246,14 @@ def write_gif_temporal(filename, size=1, fps=18,  coords=[], dims=[1,1,1]):
     # Create output mosaic
     new_img = create_mosaic_temporal(out_img, maximum, coords, dims)
 
+    # rescale image
+    new_img=exposure.rescale_intensity(new_img)
+
     # Figure out extension
     ext = '.{}'.format(parse_filename(filename)[2])
 
     # Write gif file
-    mimwrite(filename.replace(ext, '.gif'), new_img,
+    mimwrite(filename.replace(ext, str(dims)+'.gif'), new_img,
              format='gif', fps=int(fps * size))
 
 
