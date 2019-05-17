@@ -51,10 +51,13 @@ def load_and_prepare_image(filename, size=1):
     # Load NIfTI file
     data = nb.load(filename).get_data()
 
+    # scale to 1
+    data=data/data.max()
+    
     # Pad data array with zeros to make the shape isometric
     maximum = np.max(data.shape)
 
-    out_img = np.zeros([maximum] * 4)
+    out_img = np.zeros([maximum,maximum,maximum,data.shape[3]])
 
     a, b, c, d = data.shape
     x, y, z, t = (list(data.shape) - maximum) / -2
@@ -62,7 +65,7 @@ def load_and_prepare_image(filename, size=1):
     out_img[int(x):a + int(x),
             int(y):b + int(y),
             int(z):c + int(z),
-            int(t):d + int(t)] = data
+            :] = data
 
     out_img /= out_img.max()  # scale image values between 0-1
 
@@ -77,11 +80,49 @@ def load_and_prepare_image(filename, size=1):
 
 
 
-def create_mosaic_temporal(out_img,maximum):
+def create_mosaic_temporal(out_img,maximum, coords, dims=[1,1,1]):
+    """Create grayscale image.
+
+    Parameters
+    ----------
+    out_img: numpy array
+    maximum: int
+    coords: 3d coordinates of slices to show
+
+    Returns
+    -------
+    new_img: numpy array
+
+    """
+    if (dims[0]+dims[1]+dims[2])==3:
+        new_img = np.array(
+            [np.hstack((
+                np.hstack((
+                    np.flip(out_img[coords[0], :, :,i], 1).T,
+                    np.flip(out_img[:, coords[1], :,i], 1).T)),
+                        np.flip(out_img[:, :, coords[2],i], 1).T))
+             for i in range(out_img.shape[3])])
+    elif dims[0]==1:
+     
+        new_img = np.array(
+        [np.flip(out_img[coords[0], :, :,i], 1).T
+         for i in range(out_img.shape[3])])
     
-    
-    
+    elif dims[1]==1:
+   
+        new_img = np.array(
+        [np.flip(out_img[:,coords[1], :,i], 1).T
+         for i in range(out_img.shape[3])])
+
+    elif dims[2]==1:
+         
+        new_img = np.array(
+        [np.flip(out_img[:, :,coords[2],i], 1).T
+         for i in range(out_img.shape[3])])
+
+
     return new_img
+
 
 
 def create_mosaic_normal(out_img, maximum):
@@ -179,7 +220,7 @@ def create_mosaic_RGB(out_img1, out_img2, out_img3, maximum):
 
 
 
-def write_gif_temporal(filename, size=1, fps=18):
+def write_gif_temporal(filename, size=1, fps=18,  coords=[], dims=[1,1,1]):
     """Procedure for writing grayscale image.
 
     Parameters
@@ -190,16 +231,19 @@ def write_gif_temporal(filename, size=1, fps=18):
         Between 0 and 1.
     fps: int
         Frames per second
+    coords: slice numbers 
+    dims: [1,1,1] dimensions of the gif
 
     """
     # Load NIfTI and put it in right shape
     out_img, maximum = load_and_prepare_image(filename, size)
 
     # optional: find middle slices if available
-    coords=[maximum/2,maximum/2,maximum/2]
+    if coords==[]:
+        coords=[int(maximum/2),int(maximum/2),int(maximum/2)]
 
     # Create output mosaic
-    new_img = create_mosaic_temporal(out_img, maximum, coords)
+    new_img = create_mosaic_temporal(out_img, maximum, coords, dims)
 
     # Figure out extension
     ext = '.{}'.format(parse_filename(filename)[2])
